@@ -7,9 +7,9 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 # Email Configuration
-sender_email = "wael.fefgrhtr@etudiant-enit.utm.tn"
-receiver_email = "waelabdthyfhdtgrseretyrallah846@gmail.com"
-password = "czigdhtfgthfgfgtrhfg"  # App Password
+sender_email = "wa5t5t5h@etuewetgdiant-enit.utm.tn"
+receiver_emails = ["mail1@gmail.com", "mail2@gmail.com"]  # Recipients
+password = " ytrtetrtretertcs"  # App Password
 
 # List of URLs to check
 urls = [
@@ -20,80 +20,62 @@ urls = [
     "https://trouverunlogement.lescrous.fr/tools/37/search?bounds=2.169302_48.9205991_2.234232_48.8742291",
     "https://trouverunlogement.lescrous.fr/tools/37/search?bounds=2.0362453_49.0338281_2.0845719_49.00172",
     "https://trouverunlogement.lescrous.fr/tools/37/search?bounds=2.2873758_48.914015_2.3209014_48.8941707",
-    "https://trouverunlogement.lescrous.fr/tools/37/search?bounds=6.9447513_43.574726_7.074185_43.505026"
 ]
 
-def send_email(subject, body):
-    """
-    Send an email with the specified subject and body.
-    """
-    try:
-        message = MIMEMultipart()
-        message['From'] = sender_email
-        message['To'] = receiver_email
-        message['Subject'] = subject
-
-        message.attach(MIMEText(body, 'plain'))
-
-        with smtplib.SMTP('smtp.gmail.com', 587) as server:
-            server.starttls()
-            server.login(sender_email, password)
-            server.sendmail(sender_email, receiver_email, message.as_string())
-
-        print("Email sent successfully!")
-    except Exception as e:
-        print(f"Failed to send email: {e}")
-
-def fetch_and_check():
-    """
-    Fetch and check all URLs for housing availability.
-    """
-    for url in urls:
-        try:
-            response = requests.get(url)
-
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.text, 'html.parser')
-                logement_element = soup.find('h2', class_='SearchResults-desktop fr-h4 svelte-11sc5my')
-
-                if logement_element and "Aucun logement trouvé" not in logement_element.text:
-                    logements_trouves = logement_element.text.strip()
-                    message = f"{time.strftime('%Y-%m-%d %H:%M:%S')} - Logements trouvés at {url}: {logements_trouves}"
-                    print(message)
-
-                    send_email("Logement Found", message)
-                else:
-                    print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - No logement found at {url}")
-            else:
-                print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - Failed to fetch data from {url}. Status code: {response.status_code}")
-        except Exception as e:
-            print(f"Error fetching data from {url}: {e}")
-
-def test_email():
-    """
-    Test the email-sending functionality.
-    """
+def send_test_email():
     subject = "Test Email"
-    body = "This is a test email to verify the functionality of the email-sending feature."
+    body = "This is a test email to verify the script is working."
     send_email(subject, body)
+    print("Test email sent successfully.")
 
-# Schedule checks for every hour from 09:00 to 18:00
-schedule.every().day.at("09:00").do(fetch_and_check)
-schedule.every().day.at("10:00").do(fetch_and_check)
-schedule.every().day.at("11:00").do(fetch_and_check)
-schedule.every().day.at("12:00").do(fetch_and_check)
-schedule.every().day.at("13:00").do(fetch_and_check)
-schedule.every().day.at("14:00").do(fetch_and_check)
-schedule.every().day.at("15:00").do(fetch_and_check)
-schedule.every().day.at("16:00").do(fetch_and_check)
-schedule.every().day.at("17:00").do(fetch_and_check)
-schedule.every().day.at("18:00").do(fetch_and_check)
 
-if __name__ == "__main__":
-    # Test email functionality first
-    test_email()
+def send_email(subject, body):
+    # Set up the SMTP server
+    server = smtplib.SMTP("smtp.gmail.com", 587)
+    server.starttls()
+    server.login(sender_email, password)
+    
+    for receiver_email in receiver_emails:
+        # Create the email
+      msg = MIMEMultipart()
+        msg["From"] = sender_email
+        msg["To"] = receiver_email
+        msg["Subject"] = subject
+        msg.attach(MIMEText(body, "plain"))
 
-    # Run scheduled tasks
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
+        # Send the email
+        server.sendmail(sender_email, receiver_email, msg.as_string())
+        print(f"Email sent to {receiver_email}")
+    
+    # Close the server
+    server.quit()
+
+def check_urls():
+    available_houses = []  # Replace with your actual scraping logic
+    for url in urls:
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, "html.parser")
+        # Process the page and check for availability
+        if "Available" in response.text:  # Example check
+            available_houses.append(url)
+    if available_houses:
+        subject = "Housing Availability Notification"
+        body = f"The following houses are now available:\n\n" + "\n".join(available_houses)
+        send_email(subject, body)
+    else:
+        print("No new housing available at this time.")
+
+
+
+
+send_test_email()
+
+# Schedule the task for every hour from 07:00 to 19:00
+for hour in range(7, 20):  # 7 AM to 7 PM
+    time_str = f"{hour:02}:00"
+    schedule.every().day.at(time_str).do(check_urls)
+
+# Keep the script running
+while True:
+    schedule.run_pending()
+    time.sleep(1)
